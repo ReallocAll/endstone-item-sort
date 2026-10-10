@@ -71,3 +71,25 @@ jobs:
           name: item-sort-wheel-py${{ matrix.python-version }}
           path: dist/*.whl
           if-no-files-found: error
+
+  inspect-annotations:
+    name: Inspect check-run annotations
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+    steps:
+      - name: Show annotation details
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
+            --jq '.check_runs[] | [.id, .name, (.output.annotations_count // 0)] | @tsv' |
+          while IFS=$'\t' read -r id name count; do
+            echo "Check run: $name ($id), annotations: $count"
+            if (( count > 0 )); then
+              gh api --paginate "/repos/${GITHUB_REPOSITORY}/check-runs/${id}/annotations?per_page=100" \
+                --jq '.[] | [.annotation_level, .title, .message, .path, .start_line] | @tsv'
+            fi
+          done
