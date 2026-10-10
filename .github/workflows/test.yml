@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install development tools
+        run: uv pip install --python python "pytest>=8" "ruff>=0.9" "hatchling>=1.25"
+      - name: Static checks
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+      - name: Build wheel
+        run: uv build --wheel
+      - name: Install wheel
+        run: uv pip install --python python --no-deps dist/*.whl
+      - name: Verify installed entry point and wheel contents
+        run: |
+          python -I - <<'PY'
+          import importlib.metadata
+          import pathlib
+          import zipfile
+
+          dist = importlib.metadata.distribution("endstone-item-sort")
+          assert dist.version == "0.4.0"
+          eps = [ep for ep in dist.entry_points if ep.group == "endstone"]
+          assert len(eps) == 1
+          assert eps[0].name == "item-sort"
+          assert eps[0].value == "endstone_item_sort:ItemSortPlugin"
+          import endstone_item_sort
+          assert "ItemSortPlugin" in endstone_item_sort.__all__
+
+          wheels = list(pathlib.Path("dist").glob("*.whl"))
+          assert len(wheels) == 1
+          assert wheels[0].name.endswith("py3-none-any.whl")
+          with zipfile.ZipFile(wheels[0]) as whl:
+              names = set(whl.namelist())
+              assert "endstone_item_sort/plugin.py" in names
+              assert "endstone_item_sort/sorter.py" in names
+              assert any(name.endswith(".dist-info/entry_points.txt") for name in names)
+              assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: item-sort-wheel-py${{ matrix.python-version }}
+          path: dist/*.whl
+          if-no-files-found: error
