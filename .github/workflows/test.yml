@@ -23,19 +23,21 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+      - name: Create virtual environment
+        run: uv venv --python python
       - name: Install development tools
-        run: uv pip install --python python "pytest>=8" "ruff>=0.9" "hatchling>=1.25"
+        run: uv pip install --python .venv/bin/python "pytest>=8" "ruff>=0.9" "hatchling>=1.25"
       - name: Static checks
-        run: ruff check .
+        run: .venv/bin/ruff check .
       - name: Tests
-        run: pytest -q
+        run: .venv/bin/pytest -q
       - name: Build wheel
         run: uv build --wheel
       - name: Install wheel
-        run: uv pip install --python python --no-deps dist/*.whl
+        run: uv pip install --python .venv/bin/python --no-deps dist/*.whl
       - name: Verify installed entry point and wheel contents
         run: |
-          python -I - <<'PY'
+          .venv/bin/python -I - <<'PY'
           import importlib.metadata
           import pathlib
           import zipfile
