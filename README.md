@@ -16,10 +16,10 @@ Ordinary chests, barrels, and shulker boxes are **not supported**: the target En
 
 ## Requirements
 
-- Python 3.10 or newer
+- Python 3.11 or newer (tested on 3.11–3.15)
 - Endstone Python API 0.11
 
-No additional runtime Python dependencies are required. The package does not pin individual Endstone development builds or Minecraft versions.
+No additional runtime Python dependencies are required. The package does not pin individual Endstone development builds or Minecraft versions. Running on Python 3.15 also requires an Endstone build compatible with Python 3.15; the plugin wheel alone does not provide that native compatibility.
 
 ## Installation
 
